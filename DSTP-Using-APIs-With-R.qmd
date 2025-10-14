@@ -1,0 +1,16 @@
+---
+title: "Using APIs in R"
+author: "Tristan Hanon"
+format: revealjs
+---
+
+## What is an API?
+
+An Application Programming Interface (API) is something cool.
+
+
+## Why use an API?
+
+- Reproducibility
+- Regularly updated data
+
