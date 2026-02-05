@@ -1,16 +1,1072 @@
 ---
-title: "Using APIs in R"
-author: "Tristan Hanon"
-format: revealjs
+title: "Working with APIs in R"
+author: 
+  - name: "Tristan Hanon"
+    email: tristan.hanon@usda.gov
+    affiliation:
+      - name: AMS Dairy Program
+date: 02/05/2026
+date-format: long
+
+title-slide-attributes: 
+  data-background-color: "#f7f1e0"
+  data-background-image: images/AMS-Title-Slide.png
+  data-background-size: contain
+
+format: 
+  revealjs:
+    theme: [default, styles.scss]
+    transition: fade
+    center-title-slide: false
+    width: "1600"
+    height: "900"
+    link-external-newwindow: true
+    df-print: paged
+    code-block-height: 650px
 ---
+
+
+## My Background
+
+- Agricultural Economist in AMS Dairy Program
+- Started with AMS in 2022
+- Ph.D. in Agricultural and Resource Economics from UC Davis
+
+[Started working in R in grad school because I did not want to rely on proprietary software anymore]{.fragment} [(in other words, I was cheap and broke).]{.fragment} 
+
+[I have not always been good about using APIs, so I started trying to prioritize them in my work at USDA.]{.fragment}
+
+::: {.notes}
+I am an agricultural economist with the AMS Dairy Program. I provide analysis to support the Federal Milk Marketing Orders, work with Commodity Procurement to support their purchases of dairy products, and contribute to the WASDE projections for dairy. 
+
+I started with AMS in 2022, but previously had a stint with NASS when I was in undergrad. I also worked for the Congressional Budget Office between undergrad and grad school, so I am no stranger to government work. 
+
+I received my masters and Ph.D. from UC Davis. 
+:::
+
+
+## Assumptions
+
+::: {.notes}
+To make this seminar as accessible as possible, I tried to make a limited set of assumptions about what knowledge you all have coming into this. However, I do want to start by assuming some knowledge at least. 
+
+First, I think it is safe to assume some familiarity with the `tidyverse` since it is used extensively in the coursework so far. In general, I will not be explaining `tidyverse` functions, though I will try to provide links to their documentation in the slides.
+
+I will also be using the pipe extensively. I still tend to use the `tidyverse` pipe more often than the base pipe, but I will use both at different points in the presentation. 
+
+I am going to discuss functions in depth (and even get into building some functions later on), so I am assuming you will know what I mean when I talk about a functions arguments and other aspects of functions. 
+
+Finally, this may sound a bit silly, but I need to assume some understanding of how the internet works. APIs are inherently part of the web architecture, so working with APIs involves a lot of concepts associated with the internet. This is still going to be fairly basic though, like the idea that when you access a website there is communication between a client (your computer) and a server. 
+:::
+
+I am making a (limited) set of assumptions about your knowledge coming into this seminar:
+
+::: {.incremental}
+- Familiarity with `tidyverse` functions and the pipe (both `%>%` and `|>`)
+- Familiarity with R object and data types (e.g., string, list, vector)
+- Understanding of function terminology (e.g., what an argument is)
+- Some understanding of how the internet works
+:::
+
+. . .
+
+Whenever I use functions from packages outside of the `tidyverse`, I will specify them using the `package_name::function_name()` syntax to make it clear where they come from. 
+
+. . .
+
+Therefore, I'm only going to load one package to use in this presentation: 
+
+```{r}
+#| label: Setup
+#| echo: true
+#| output: false
+library(tidyverse)
+```
+
+
+
+## Topics Covered {.inverse}
+
+::: {.incremental}
+- Definitions: What even is an API?
+- Example API: Mandatory Price Reporting Data
+- How to interact with APIs using R and the `httr2` package
+- Building an API Function
+- API Authentication
+- Example API: My Market News
+:::
+
+
+# Definitions {.inverse}
 
 ## What is an API?
 
-An Application Programming Interface (API) is something cool.
+::: {.notes}
+The term API can also be used to refer to any means of interacting with a piece of software. For example, the way a specific R package interacts with R could be describes as the package's API (one piece of software communicating with another). 
+
+In data science, we typically mean *web API* when we say *API*. A server-side web API will have a set of defined *endpoints*
+:::
+
+API stands for [***Application Programming Interface***]{.hl-lightblue-lightgreen}.
+
+. . . 
+
+As a general term, it is a framework which connects computers or software together.
+
+. . .
+
+In a data science context, typically refers to a system allowing access to data via a specialized request-response framework. 
+
+. . . 
+
+A more precise definition would be to refer to the latter as *web APIs*, but they are often simply called APIs.
+
+
+
+
+## Web APIs
+
+::: {.notes}
+The most common architecture or design for web APIs is called *REST*, which stands for Representational State Transfer. An API which conforms to the REST guidelines is often referred to as *RESTful*. I'm going to describe this style of API since it is what I am familiar with (and likely what you will run into in the wild), but be aware there are other styles of APIs for specific use cases. 
+
+As an aside, HTTP (hypertext transfer protocol) is also a very general term that describes a request-response framework in a client-server model. Any time you utilize a web browser to access a website, you are sending an HTTP request to a server and receiving a response. 
+:::
+
+![](images/rest-api.png){fig-align="center"}
+
+A [***web API***]{.hl-lightblue-lightgreen} will have a set of defined [***endpoints***]{.hl-lightblue-lightgreen} that a user can access with a correctly-formatted *request* and receive a *response*. 
+
+. . .
+
+[***Requests***]{.hl-lightblue-lightgreen} are typically formatted using [***HTTP***]{.hl-lightblue-lightgreen} and use one of a set of *verbs*, the most common being `GET` and `POST`. To access data, `GET` is the verb to use. 
+
+. . .
+
+[***Responses***]{.hl-lightblue-lightgreen} can be in the form of JSON, XML, HTML, or plain text data, though JSON is the most common. 
+
+
+## Anatomy of an API Call
+
+Let's look at an API call some of us have seen already (from Intermediate Assignments 1 and 2):
+
+::: {.center-text}
+[`https://api.census.gov/data`]{.fragment .hl-brown fragment-index=0}[`/2020/dec/pl`]{.fragment .hl-brown fragment-index=1}[`?get=P1_001N&for=county`]{.fragment .hl-brown fragment-index=2}
+:::
+
+
+::: {.fragment fragment-index=0}
+The first part is the base URL used across the Census API.
+:::
+
+::: {.fragment fragment-index=1}
+The next part defines the **API endpoint**: `/2020/dec` is pointing the the 2020 Decennial Census, within which `/pl` specifies the specific dataset. In this case, the full endpoint points to the redistricting data from the 2020 Decennial Census.
+:::
+
+::: {.fragment fragment-index=2}
+Everything after the `?` defines the query parameters:
+:::
+
+::: {.fragment fragment-index=2 .smaller-bullets}
+- `get=P1_001N` says we are using a `GET` HTTP action and requesting the `P1_001N` variable (total population).
+- `&` is used to separate query parameters if multiple are specified.
+- `for=county` specifies the geography level, i.e. county-level total population. This could be changed to `for=state` to return state-level population, or another specific named geography.
+:::
+
 
 
 ## Why use an API?
 
-- Reproducibility
-- Regularly updated data
+Using a web API requires some extra work. What is the benefit of that extra effort?
 
+::: {.incremental}
+- Regularly updated data: If you are using high-frequency data, using an API ensures you always have access to the most up-to-date data.
+- Reproducibility: Know what you are getting each time the code is run. Ensure your collaborators get the same results as you.
+- Reusability: In many cases, once the code is written it can be used over and over (especially if you build a function).
+- Automation: Using an API can remove manual processes, such as downloading data.
+:::
+
+
+
+# Exploring a Scenario {.inverse}
+
+
+## Mandatory Price Reporting Data
+
+:::: {.columns}
+
+::: {.column width="60%"}
+[Suppose we need to access data from the Dairy Product Mandatory Reporting Program (DPMRP).]{.fragment fragment-index=0}
+
+[This program collects prices and sales volumes for butter, cheese, dry whey, and nonfat dry milk.]{.fragment fragment-index=1}
+
+[These data are accessible through the [**Datamart**](https://mpr.datamart.ams.usda.gov/) website (as are data from other mandatory reporting programs).]{.fragment fragment-index=2}
+:::
+
+::: {.column width="40%"}
+[[![](images/Datamart-Main-Page.png){fig-alt="Main page of Datamart website"}](https://mpr.datamart.ams.usda.gov/)]{.fragment fragment-index=2}
+:::
+
+::::
+
+
+::: {.notes}
+As an example, let's look at the data collected through the Dairy Product Mandatory Reporting Program. Obviously, as someone working in Dairy Program, these are data I use regularly, but they provide a good example of public USDA data that are accessible via API. 
+
+(Click through to the Datamart website and walk through the steps of accessing data that way).
+:::
+
+
+## Datamart API User Guide
+
+::: {.notes}
+It is *always* a good idea to review any available API documentation. 
+
+The Datamart API user guide primarily covers accessing the API using Excel or Postman (another piece of software specifically focused on working with APIs). But it also give us a couple of example URLs that we can use to learn more about how to access data through the API. 
+:::
+
+Datamart data are accessible through an API, and the main Datamart webpage has a link to a [user guide](https://mpr.datamart.ams.usda.gov/LMPRS-API-User-Guide.pdf) for that API.
+
+![](images/Datamart-User-Guide-NDPSR-URLs.png){width=80% fig-align="center" fig-alt="Screenshot from LMPRS API User Guide showing URLs to access NDSPR prices and sales data."}
+
+. . .
+
+The following URL provides access to butter prices and sales data:
+
+[`https://mpr.datamart.ams.usda.gov/services/v1.1/reports/2993/Butter%20Prices%20and%20Sales`](https://mpr.datamart.ams.usda.gov/services/v1.1/reports/2993/Butter%20Prices%20and%20Sales){style="font-size: 0.8em"}
+
+. . .
+
+[***But how do we access these data from within R?***]{.hl-lightblue-lightgreen}
+
+
+
+
+# Introduction to `httr2` {.inverse}
+
+
+## `httr2` {auto-animate=true}
+
+::: {.notes}
+`httr2`, pronounced "hitter 2", is a package developed by Hadley Wickham, the mastermind behind the `tidyverse`.
+
+As the name suggests, it is a "sequel" to the package `httr`, which is also widely used for API access in R. 
+
+However, `httr2` has a lot of newer features that expand on the abilities of `httr`. These features also make it easier to build functions and packages to access APIs. 
+:::
+
+:::: {.columns}
+
+::: {.column width="70%"}
+[`httr2`](https://httr2.r-lib.org/index.html) is a package developed by Hadley Wickham, the mastermind behind the `tidyverse`, which provides a robust framework for building and executing HTTP requests. 
+
+First released in 2021 (so, relatively new in terms of R packages).
+
+:::
+  
+::: {.column width="30%"}
+[![](images/httr2-logo.png){fig-alt="Logo for httr2 package"}](https://httr2.r-lib.org/index.html)
+:::
+  
+::::
+
+
+## `httr2` {auto-animate=true}
+
+:::: {.columns}
+
+::: {.column width="70%"}
+[`httr2`](https://httr2.r-lib.org/index.html) is a package developed by Hadley Wickham, the mastermind behind the `tidyverse`, which provides a robust framework for building and executing HTTP requests. 
+
+First released in 2021 (so, relatively new in terms of R packages).
+
+:::
+  
+::: {.column width="30%"}
+[![](images/httr2-logo.png){fig-alt="Logo for httr2 package"}](https://httr2.r-lib.org/index.html)
+:::
+  
+::::
+
+
+[***Advantages:***]{style="font-size: 1.2em"}
+
+::: {.incremental}
+- Creates explicit ***request*** objects instead of executing a request automatically.
+- Allows piping of ***request*** and ***response*** objects.
+- Securely handles secrets/credentials for accessing APIs.
+:::
+
+
+## `httr2` {auto-animate=true}
+
+::: {.notes}
+There are a couple downsides I see to using `httr2`. First, it is a bit more complex than `httr` and therefore has a bit more of a learning curve. However, I think taking the time to learn its features is more beneficial in the long run. 
+
+Second, it is still developing, and occasionally changes come along that can break existing code. This happened to me at one point, and I'll get into exactly what happened a little later. 
+:::
+
+:::: {.columns}
+
+::: {.column width="70%"}
+[`httr2`](https://httr2.r-lib.org/index.html) is a package developed by Hadley Wickham, the mastermind behind the `tidyverse`, which provides a robust framework for building and executing HTTP requests. 
+
+First released in 2021 (so, relatively new in terms of R packages).
+
+:::
+  
+::: {.column width="30%"}
+[![](images/httr2-logo.png){fig-alt="Logo for httr2 package"}](https://httr2.r-lib.org/index.html)
+:::
+  
+::::
+
+
+[***Disadvantages:***]{style="font-size: 1.2em"}
+
+::: {.incremental}
+- More complex than alternative options (namely `httr`).
+- Still in development... can occasionally break your code.
+:::
+
+
+
+## Creating a `httr2` Request {auto-animate="true"}
+
+::: {.notes} 
+The first step is to create a `request` object. 
+
+A `httr2_request` object is technically a list object containing a variety of information (most of which is actually empty in a simple case like this). 
+
+Printing the `req` object gives us a bit of information about what it contains, including the URL. 
+:::
+
+A [***request***]{.hl-lightblue-lightgreen} object is created by first passing a base URL to the `httr2::request()` function. 
+
+. . .
+
+Let's circle back to the URL from the Datamart API:
+
+```{r}
+#| echo: true
+req <- "https://mpr.datamart.ams.usda.gov/services/v1.1/reports/2993/Butter%20Prices%20and%20Sales" %>%
+  httr2::request()
+```
+
+. . .
+
+This creates an object called `req` which can then be passed to the `httr2::req_perform()` function to execute the request. The `req` object includes the URL:
+
+```{r}
+req
+```
+
+
+## Creating a `httr2` Request {auto-animate="true"}
+
+::: {.notes}
+Building the URL piece-by-piece can be helpful when it is more complex or lengthy. This can make the code more readable for the end user. It also helps when you have a situation with a lot of query parameters. 
+
+We start with the same idea, passing a URL to the `httr2::request()` function. However, here we use the base URL for the Datamart API.
+
+The `req_url_path_append()` function lets us specify strings to add to the end of the base URL passed to `request()`. Arguments that are separated by a comma in the function will be separated by a slash in the URL. In this case, I am using the `URLencode()` function so I don't have to type out the `%20`s to replace the spaces in the "Butter Prices and Sales" string. 
+
+This is also where I ran into trouble before when the `httr2` code changed in development. In an earlier version of `httr2`, the `req_url_path_append()` function would automatically encode strings before they were added to the URL. However, this apparently resulted in problems in certain cases, with characters accidentally double-encoded or incorrectly encoded. The function was changed to take the string verbatim, but it needs to be encoded properly for the request to be executed. When this changed it broke some of my code. 
+
+Finally, the `req_url_query()` function helps us to add query parameters at the end of the URL. In this case I am adding a parameter, `lastReports = 1` to only pull data from the most recent NDPSR report. This is mostly to simplify the results. `req_url_query()` adds a question mark automatically and separates arguments with ampersands. 
+:::
+
+However, it can be helpful to build the request piece by piece (especially with a lengthy URL like this one). `httr2` also includes a suite of functions to do so:
+
+```{r}
+#| echo: true
+#| code-line-numbers: "|1-2|3-6|7-9"
+req <- "https://mpr.datamart.ams.usda.gov/services/v1.1/reports" %>%
+  httr2::request() %>%
+  httr2::req_url_path_append(
+    "2993",
+    URLencode("Butter Prices and Sales")
+  ) %>%
+  httr2::req_url_query(
+    lastReports = 1
+  )
+```
+
+. . . 
+
+The result is the same (or close enough; I added the `lastReports` parameter): 
+
+```{r}
+req
+```
+
+
+
+## Executing a Request and Receiving a Response
+
+A request object is passed to `httr2::req_perform()` to actually execute the request:
+
+```{r}
+#| echo: true
+resp <- req %>%
+  httr2::req_perform()
+```
+
+. . .
+
+The response object `resp` is another list containing some pertinent information:
+
+```{r}
+resp
+```
+. . .
+
+::: {.smaller-bullets style="margin-top: 0.5em"}
+- The HTTP verb and URL used in the request. 
+- `Status:` The HTTP status code. A `200` response indicates the request was successful; a code in the `400` or `500` range indicates a server error, and `httr2` will convert these to R errors automatically. 
+- `Content-Type:` Indicates the content returned is in JSON format.
+- `Body:` Tells us there is `r scales::label_bytes(accuracy = 0.01)(length(resp$body))` of data in memory.
+:::
+
+::: {.notes}
+As a side note, you can execute a request without creating an explicit request object or response object, i.e., without creating `req` and `resp`. I personally find it helpful, especially when learning how to use a new API.
+
+If preferred, you can simply pipe a URL into `httr2::request()` and then pipe directly into `httr2::req_perform()`. It still may be helpful to save the response so you don't have to call the API server more often than necessary. 
+:::
+
+
+## Extracting Data from a Response {auto-animate="true"}
+
+::: {.notes}
+Scroll through the list output. 
+
+The list consists of four top-level items: `reportSection`, the name of the report section returned, `reportSections`, the names of *all* report sections for the specific slug ID, `stats`, another list containing some information on the results. 
+
+The `results` element is clearly what we are interested in. We can see it is itself a list with five elements, each of which is *another* list (JSON data is often a lot of nested lists) with 19 elements each. The 19 elements in the lower-level lists look like variables, including names and data types, and values. We can start to see the data structure here: a data frame with 5 rows and 19 variables. 
+:::
+
+Data are saved in the [***body***]{.hl-lightblue-lightgreen} of the response object and can be extracted using a set of functions from `httr2` depending on the format of the data. 
+
+. . . 
+
+Since our data are in JSON format, we can pass `resp` to `httr2::resp_body_json()`. The full JSON data prints by default, which is a lot of output. It can be helpful to use the `str()` function to look at the structure of the data first (which *still* produces a lot of output):
+
+```{r}
+#| echo: true
+resp %>%
+  httr2::resp_body_json() %>%
+  str()
+```
+
+
+
+
+
+## Extracting Data: `purrr::pluck()` {auto-animate="true"}
+
+We can use the [`pluck()`](https://purrr.tidyverse.org/reference/pluck.html) function from the `purrr` package (part of the `tidyverse`) to extract just the `results` object from the larger list.
+
+```{r}
+#| echo: true
+resp %>%
+  httr2::resp_body_json() %>%
+  pluck("results") %>%
+  str()
+```
+
+But this *still* results in a list, which we have to work to convert to a data frame. What gives?
+
+::: {.notes}
+Extracting just the `results` list from the JSON data is better, but still results in a list. There are ways to work this into a data frame, but the `narrative` variable being `NULL` causes some issues for us. Fortunately, there is a simpler approach. 
+:::
+
+## An Alternative Approach {auto-animate="true"}
+
+Setting the `simplifyVector` argument in `httr2::resp_body_json()` to `TRUE` causes it to behave exactly like `jsonlite::fromJSON()`:
+
+```{r}
+#| echo: true
+#| code-line-numbers: "|2|3"
+resp %>%
+  httr2::resp_body_json(simplifyVector = TRUE) %>%
+  pluck("results")
+```
+
+And returns a nicely formatted data frame when we use `purrr::pluck()` to isolate the results. 
+
+::: {.notes}
+The `httr2::resp_body_json()` function uses `jsonlite::fromJSON()` under the hood, but it changes the default value of `simplifyVector` from `TRUE` in `jsonlite::fromJSON()` to `FALSE`. This changes the behavior somewhat.
+
+I *assume* the `httr2` developers have a good reason for doing this, but I find just setting `simplifyVector = TRUE` to often be an easier approach.
+:::
+
+
+## Putting It All Together
+
+::: {.notes}
+First we pass the base URL for the API service to the `httr2::request()` function.
+
+Next, we use `httr2::req_url_path_append()` and `httr2::req_url_query()` to define the API endpoint (the specific report and section we want) and any query parameters. 
+
+Then the request object is passed to `httr2::req_perform()` to execute, creating the `resp` object. 
+
+Finally, the data are extracted from the `response` object using `httr2::resp_body_json()` and `purrr::pluck()`.
+:::
+
+We just covered a lot of different functions and syntax. Let's see the full API call together. 
+
+. . . 
+
+```{r}
+#| echo: true
+#| code-line-numbers: "|1-2|3-9|11-12|14-16|"
+req <- "https://mpr.datamart.ams.usda.gov/services/v1.1/reports" %>%
+  httr2::request() %>%
+  httr2::req_url_path_append(
+    "2993",
+    URLencode("Butter Prices and Sales")
+  ) %>%
+  httr2::req_url_query(
+    lastReports = 1
+  )
+
+resp <- req %>%
+  httr2::req_perform()
+
+data <- resp %>%
+  httr2::resp_body_json(simplifyVector = TRUE) %>%
+  pluck("results")
+```
+
+. . . 
+
+Great, we have butter prices and sales data! But what about the other products? Do we have to do all of that *again*?
+
+
+
+# Creating an API Function {.inverse}
+
+## Functions Allow Greater Flexibility
+
+If you suspect you'll be using a specific API regularly, especially if you'll being varying the parameters, build a function. 
+
+
+## Identify Function Arguments
+
+The first step is to look at the API call and identify which parts the user may want to change. Those elements will become our function arguments.
+
+. . . 
+
+```{r}
+#| echo: true
+#| eval: false
+req <- "https://mpr.datamart.ams.usda.gov/services/v1.1/reports" %>%
+  httr2::request() %>%
+  httr2::req_url_path_append(
+    "2993",
+    URLencode("Butter Prices and Sales")
+  ) %>%
+  httr2::req_url_query(
+    lastReports = 1
+  )
+```
+
+::: {.incremental}
+- Slug ID: "2993" is the slug ID for the NDPSR, but a user may want to pull a different report.
+- Section Name: A section name argument allows the user to pull different sections from a given report.
+- `lastReports` Parameter: Allows the user to select how many recent reports to return.
+:::
+
+## Datamart API Function {auto-animate="true"}
+
+::: {.notes}
+`slugid` is set as the first argument and is not given a default. We want the user to specify this one.
+
+`section` is the second argument, and is given a default value of `NULL`. Not all reports in Datamart have different sections, and a user may want to pull the full metadata for a report. This also leverages how `httr2` treats `NULL` values in the `httr2::req_url_path_append()` and `httr2::req_url_query()` functions. If a `NULL` value is provided it is simply ignored (or removed if already present). 
+
+`lastReports` is the last argument, and is given a default value of 1. This means only the most recent report will be pulled by default. This protects the user (and the server) from being overwhelmed by large requests. 
+:::
+
+With those arguments in mind, we can start building a function:
+
+. . .
+
+```{r}
+#| label: Datamart Function Arguments
+#| echo: true
+#| eval: false
+#| code-line-numbers: "|2|3|4"
+Datamart_Pull <- function(
+    slugid,
+    section = NULL,
+    lastReports = 1
+) {
+  
+  # Code goes here...
+  
+}
+```
+
+
+
+
+## Datamart API Function {auto-animate="true"}
+
+Next we add our code to generate the request and extract the results:
+
+```{r}
+#| label: Definte Datamart_Pull Function
+#| echo: true
+#| code-line-numbers: "|7-8|10-13|15-19|21-28"
+Datamart_Pull <- function(
+    slugid,
+    section = NULL,
+    lastReports = 1
+) {
+  
+  # First set the base URL for the Datamart/LMPR API
+  base_url <- "https://mpr.datamart.ams.usda.gov/services/v1.1/reports"
+  
+  # URL Encode Section Name
+  if (!is.null(section)) {
+    section <- URLencode(section)
+  }
+  
+  # Next, define the API request (whether or not section is specified)
+  req <- base_url |>
+    httr2::request() |>
+    httr2::req_url_path_append(slugid, section) |>
+    httr2::req_url_query(lastReports = lastReports)
+  
+  # Perform the API call and convert the response to JSON format
+  resp <- req |>
+    httr2::req_perform()
+  
+  data <- resp |>
+    httr2::resp_body_json(simplifyVector = TRUE) |>
+    purrr::pluck("results") |>
+    as_tibble()
+  
+}
+```
+
+
+::: {.notes}
+We set the `base_url` to the common URL used for all Datamart API calls. This can be hardcoded since it is not going to change. 
+
+Next, we use `URLencode()` to make sure the section name is properly formatted, given that we know the Datamart report section names often include spaces. 
+
+Then we define the `httr2` `request` object. We use `httr2::req_url_path_append` to append the `slugid` argument and `section` argument to the end of the URL, then use `httr2::req_url_query` to set the lastReports query parameter. 
+
+Finally, the request is executed and the results are extracted and saved as a tibble. 
+
+By assigning the results to the `data` object, the `Datamart_Pull()` function will not print the results when run. It will assign the results to a new object though. This is to save the user from accidentally printing a ton of output to the console. 
+:::
+
+## `Datamart_Pull()` in Action
+
+Let's use the new `Datamart_Pull()` function to pull cheese prices from the last four reports:
+
+. . . 
+
+```{r}
+#| label: Using Datamart_Pull
+#| echo: true
+Datamart_Pull(slugid = "2993",
+              section = "40 Pound Block Cheddar Cheese Prices and Sales",
+              lastReports = 4) %>%
+  select(Report_Week = week_ending_date, Week_Ending = `Week Ending Date`, cheese_40_Price, cheese_40_Sales)
+```
+
+
+::: {.notes}
+Now that we have this code wrapped up in a function, it is a lot easier to use for different purposes. We easily swapped out the section name to get a different set of prices and changed the `lastReports` parameter to pull more data. 
+:::
+
+
+## Utilizing `purrr::map()` {auto-animate="true"}
+
+Since we might want to pull all the product prices at the same time, we can utilize the [`map()`](https://purrr.tidyverse.org/reference/map.html) function from the `purrr` package to iterate over a list:
+
+```{r}
+#| echo: true
+#| eval: false
+list(
+  "Butter Prices and Sales",
+  "40 Pound Block Cheddar Cheese Prices and Sales",
+  "Dry Whey Prices and Sales",
+  "Nonfat Dry Milk Prices and Sales"
+)
+```
+
+::: {.notes}
+I admit this next bit might be getting a bit advanced, but I think it is a really important concept to discuss briefly. 
+
+A huge benefit of writing your own functions is using those functions to iterate over lists. If we wanted to pull all of the product price data at once, we can pass a list of the four different section names to the `map()` function and apply `Datamart_Pull()` to each element of the list. 
+
+We start by defining a list with all of the section names.
+:::
+
+## Utilizing `purrr::map()` {auto-animate="true"}
+
+Since we might want to pull all the product prices at the same time, we can utilize the [`map()`](https://purrr.tidyverse.org/reference/map.html) function from the `purrr` package to iterate over a list:
+
+```{r}
+#| echo: true
+list(
+  "Butter Prices and Sales",
+  "40 Pound Block Cheddar Cheese Prices and Sales",
+  "Dry Whey Prices and Sales",
+  "Nonfat Dry Milk Prices and Sales"
+) %>%
+  map(
+    \(x) Datamart_Pull(slugid = "2993", section = x)
+  ) 
+```
+
+::: {.notes}
+Then, this list is passed into the `map()` function. 
+
+`map()` takes a list or vector as its first argument, which is exactly what we are piping in.
+
+The second argument is a function to apply to each element of the list. In this case we define the function using an ***anonymous function***. The anonymous function allows us to plug `x` into the `section` argument in `Datamart_Pull()`. The `slugid` argument is hardcoded because we are pulling from the same report. 
+
+The result is a list with four elements, each of which is a tibble containing the requested data *(scroll through to show this)*.
+:::
+
+## Utilizing `purrr::map()` {auto-animate="true"}
+
+Since we might want to pull all the product prices at the same time, we can utilize the [`map()`](https://purrr.tidyverse.org/reference/map.html) function from the `purrr` package to iterate over a list:
+
+```{r}
+#| echo: true
+list(
+  "Butter Prices and Sales",
+  "40 Pound Block Cheddar Cheese Prices and Sales",
+  "Dry Whey Prices and Sales",
+  "Nonfat Dry Milk Prices and Sales"
+) %>%
+  map(
+    \(x) Datamart_Pull(slugid = "2993", section = x)
+  ) %>%
+  map(
+    \(x) select(x, -c(created_date, narrative, report_title:published_date))
+  ) %>%
+  reduce(left_join, by = c("week_ending_date", "Week Ending Date"))
+```
+
+::: {.notes}
+Since we still have a list object, we can pass it into another `map()` call. Here I am just dropping a few unneccessary variables. 
+
+I then combine the tibbles into a single tibble using the `reduce()` function and a `left_join` on the two date variables.
+
+The result is a single tibble containing prices and sales data for all four products. 
+
+One thing to note is that these are *all* character type variables. So we still have some data cleaning steps before we can start working with the data. 
+:::
+
+
+## Further Improvements
+
+The `Datamart_Pull()` function we've built is fairly bare bones, but it gets the job done. There are several potential improvements that could make it more user friendly and foolproof:
+
+::: {.incremental}
+- Check the argument types and throw a helpful error if there is a type mismatch.
+- Create specific functions for each endpoint: Define a new function for just the NDPSR (slug ID 2993) so the user does not need to know more about the details of the API.
+- Allow more arguments: The Datamart API allows more query parameters in addition to `lastReports`, such as filtering by a date. Include more arguments for the user to set (which might be easier with specific functions for each endpoint).
+- Build a package!
+:::
+
+
+# Handling Authentication {.inverse}
+
+## What is Authentication?
+
+::: {.notes}
+There is technically a distinction between "authentication" and "authorization", but it likely does not matter for most of our use cases. An example would be if an API restricts access to certain data to only senior-level members of an organization. In this case, a user may be *authenticated* properly but not *authorized* for a certain request. 
+:::
+
+Datamart is a fairly simple API since it does not require authentication to use. However, many APIs require users to be authenticated and authorized before they will return data. 
+
+. . . 
+
+[***Authentication***]{.hl-lightblue-lightgreen} is the process by which an application confirms a user's identity.
+
+[***Authorization***]{.hl-lightblue-lightgreen} is a further step which confirms whether an authenticated user is authorized to access the requested information. 
+
+. . .
+
+Authentication is often handled by assigning an [***API key***]{.hl-lightblue-lightgreen}, an alphanumeric combination unique to each user. In some cases, users may use a username and password for authentication.
+
+. . .
+
+Requiring authentication helps APIs manage access by tracking usage and enforcing limits. Even if it is free to sign up for an API key, they ensure an extra layer of security. 
+
+
+
+## Another Scenario: My Market News
+
+::: {.notes}
+My Market News includes data from Cotton & Tobacco Market News; Dairy Market News; Livestock, Poultry, and Grain Market News; and Specialty Crops Market News. 
+:::
+
+:::: {.columns}
+
+::: {.column width="60%"}
+[My Market News](https://mymarketnews.ams.usda.gov/) is another AMS website hosting data from across Market News divisions.
+
+[My Market News also has an API service, with [documentation](https://mymarketnews.ams.usda.gov/mymarketnews-api) available. The My Market News API requires users to have an API key.]{.fragment}
+
+[Let's use the My Market News API to pull some more dairy data.]{.fragment} 
+:::
+
+::: {.column width="40%"}
+[![](images/MMN-Main-Page.png){fig-alt="Main page of My Market News website"}](https://mymarketnews.ams.usda.gov/)
+:::
+
+::::
+
+
+
+
+## Secret Management
+
+API keys are considered [***secrets***]{.hl-lightblue-lightgreen} in computer science parlance. 
+
+. . .
+
+[***Secrets***]{.hl-lightblue-lightgreen} are sensitive information a user wants to keep secret. When transmitting a secret over the internet (as we do when making HTTP requests), so additional care is required.
+
+. . .
+
+The easiest way to manage API keys for use in R is to store them in an `.Renviron` file. `.Renviron` is read by R on startup, creating environmental variables that are accessible in an R session with `Sys.getenv()`. 
+
+. . .
+
+Environmental variables are saved as key-value pairs. `.Renviron` is easily accessed with the `usethis::edit_r_environ()` function.
+
+```{.bash filename=".Renviron"}
+NASSQS_TOKEN="abc123"
+MMN_API_KEY="def456"
+FRED_API_KEY="ghi789"
+CENSUS_API_KEY="jkl101112"
+ 
+```
+
+
+
+## Using the My Market News API {auto-animate="true"}
+
+Let's try to pull prices for [Oceania Whole Milk Powder](https://mymarketnews.ams.usda.gov/viewReport/1039). 
+
+As we did with the Datamart API, we start by building a `httr2` request:
+
+```{r}
+#| echo: true
+#| error: true
+req <- "https://marsapi.ams.usda.gov/services/v1.2/reports" %>%
+  httr2::request() %>%
+  httr2::req_url_path_append("1039")
+```
+
+
+## Using the My Market News API {auto-animate="true"}
+
+Let's try to pull prices for [Oceania Whole Milk Powder](https://mymarketnews.ams.usda.gov/viewReport/1039). 
+
+As we did with the Datamart API, we start by building a `httr2` request:
+
+```{r}
+#| echo: true
+#| error: true
+req <- "https://marsapi.ams.usda.gov/services/v1.2/reports" %>%
+  httr2::request() %>%
+  httr2::req_url_path_append("1039")
+
+resp <- req %>%
+  httr2::req_perform()
+```
+
+. . . 
+
+Uh oh, an error!
+
+
+
+## What caused the error?
+
+::: {.notes}
+Even though the culprit behind this error is pretty obvious (we didn't actually use our API key), this is a good opportunity to investigate how to look into an error message in further detail. 
+
+When we look at the `$message` and `$detail` elements of the JSON list that was returned, we can see "Access is denied" due to not being authenticated. We can remedy this easily by using our API key. 
+
+`httr2` also has tools for building more informative error messages, which will print properly in the R console, for any functions you build. 
+:::
+
+Sometimes you will need to investigate what is causing an error more closely. Luckily, `httr2` allows us to do so even if the request failed. 
+
+. . .
+
+The `httr2::last_response()` function will return the `response` object even if an error caused the code to fail. We can read the contents using `httr2::resp_body_json()`:
+
+. . .
+
+```{r}
+#| label: Examine MMN Error
+#| echo: true
+httr2::last_response() %>%
+  httr2::resp_body_json()
+```
+
+
+
+
+
+## Using My Market News API with Authentication {auto-animate="true"}
+
+::: {.notes}
+The My Market News API uses basic authentication, so we can use the `httr2::req_auth_basic()` function to set our API key. I'm using `Sys.getenv()` to pull my API key from my `.Renviron` file.
+
+You'll notice I'm setting my API key as both the username and password in `httr2::req_auth_basic()`. This may seem redundant, but its due to a bit of a quirk from both the My Market News API and the way the `httr2` function works. 
+
+The My Market News documentation says to use the API key as the basic authentication username value, and says a password is not required. Which suggests we could just set the `username` argument in `httr2::req_auth_basic()`. However, the `httr2::req_auth_basic()` function is built with a nice user-friendly feature that causes an unfortunate issue here. If the `password` argument is left blank, it will prompt the user to enter a password through a popup window. When this happens, the password cannot be left blank. Therefore, I find it easiest to just pass the API key to both arguments. The My Market News API does not seem to care, so this works fine. 
+:::
+
+Let's try that again. `httr2` provides the `httr2::req_auth_basic()` function to facilitate basic authentication. We can supply it with our API key:
+
+. . .
+
+```{r}
+#| echo: true
+#| code-line-numbers: "|4-5"
+req <- "https://marsapi.ams.usda.gov/services/v1.2/reports" %>%
+  httr2::request() %>%
+  httr2::req_url_path_append("1039") %>%
+  httr2::req_auth_basic(username = Sys.getenv("MMN_API_KEY"),
+                        password = Sys.getenv("MMN_API_KEY"))
+```
+
+
+
+## Using My Market News API with Authentication {auto-animate="true"}
+
+Let's try that again. `httr2` provides the `httr2::req_auth_basic()` function to facilitate basic authentication. We can supply it with our API key:
+
+```{r}
+#| echo: true
+req <- "https://marsapi.ams.usda.gov/services/v1.2/reports" %>%
+  httr2::request() %>%
+  httr2::req_url_path_append("1039") %>%
+  httr2::req_auth_basic(username = Sys.getenv("MMN_API_KEY"),
+                        password = Sys.getenv("MMN_API_KEY"))
+
+req
+```
+
+Examining the `request` object, we can see the `Authorization` header is set, but automatically redacted by `httr2` for security. 
+
+
+
+## Using My Market News API with Authentication {auto-animate="true"}
+
+::: {.notes}
+The `200 OK` status code tells us the request went through successfully. I won't go through the process of extracting the data again as it is the same as with the Datamart API. 
+:::
+
+Let's try that again. `httr2` provides the `httr2::req_auth_basic()` function to facilitate basic authentication. We can supply it with our API key:
+
+```{r}
+#| echo: true
+req <- "https://marsapi.ams.usda.gov/services/v1.2/reports" %>%
+  httr2::request() %>%
+  httr2::req_url_path_append("1039") %>%
+  httr2::req_auth_basic(username = Sys.getenv("MMN_API_KEY"),
+                        password = Sys.getenv("MMN_API_KEY"))
+
+req %>%
+  httr2::req_perform()
+```
+
+We have a successful response!
+
+. . . 
+
+Extracting data from the response is the same as with the Datamart API. 
+
+
+## Another Note on Authentication
+
+::: {.notes}
+It is worth mentioning that there are several types of API authentication you may run into. 
+
+Admittedly, I do not know a lot of details about how these work beyond basic authentication. However, `httr2` has functionality to address these forms of authentication if you run into them. 
+:::
+
+APIs can handle authentication in a number of different ways:
+
+::: {.incremental}
+- The simplest, but also least secure, method is to supply the API key as a query parameter. This can be done using `httr2::req_url_query()`.
+- Basic authentication: Uses an HTTP header to provide credentials, which may include a username and/or password. This is the form we used with the My Market News API.
+- JSON Web Token (JWT): A user is supplied with a digitally-signed token when they initially log into an application. The token is then required in each subsequent request. 
+- OAuth: A framework that uses a third party to authenticate a user. For example, when you are prompted to log into a website using a Google account.
+:::
+
+. . .
+
+`httr2` has functions to support authentication using any of these forms. 
+
+
+
+
+# Wrapping Up {.inverse}
+
+## Summarizing What We Learned
+
+::: {.incremental}
+- [***Web APIs***]{.hl-lightblue-lightgreen} allow *authorized* users to access data through a structured *request-response* framework. 
+- [`httr2`]{style="font-weight: bold"} is a package that provides a framework for building and executing HTTP requests. 
+- Create a `httr2` request by passing a base URL to `httr2::request()`.
+  - Build on that request using `httr2::req_url_path_append()` and `httr2::req_url_query()`.
+  - Set the authorization header using `httr2::req_auth_basic()` (or similar functions). 
+- Execute a `httr2` request by passing it to `httr2::req_perform()`.
+- Extract JSON data using `httr2::resp_body_json(simplifyVector = TRUE)` (or a similar function for different data types).
+- Use `purrr::pluck()` to drill down to lower levels of nested lists.
+- [***Build a function once you know how an API works!***]{.hl-lightblue-lightgreen}
+:::
+
+
+
+## For More Information {.inverse}
+
+Useful Sources:
+
+- [`httr2` documentation](https://httr2.r-lib.org/index.html) and the [Wrapping APIs vignette](https://httr2.r-lib.org/articles/wrapping-apis.html)
+
+Other Software: 
+
+- [Postman](https://www.postman.com/): A purpose-built tool for accessing, developing, and testing APIs. Can provide a good workspace for figuring out different API options and settings. Available in Software Center.
+- Excel: Feels somewhat basic, but Excel does have good tools for pulling in data from APIs. The data can then be processed using the Power Query Editor. Can be useful when working with colleagues who are not well-versed in R or Python. 
+
+
+
+## R Packages for APIs {.inverse}
+
+Already existing R packages wrapping useful APIs:
+
+- [`rnassqs`](https://docs.ropensci.org/rnassqs/index.html): Accesses the NASS Quick Stats API (developed by Nicholas Potter of ERS)
+- [`fredr`](https://sboysel.github.io/fredr/index.html): Accesses the Federal Reserve Economic Data (FRED) API. 
+- [`censusapi`](https://www.hrecht.com/censusapi/): Accesses the Census API, making more than 1,500 endpoints available. 
+- [`tigris`](https://github.com/walkerke/tigris): Download Census Bureau TIGER/Line shapefiles.
+- [`tidycensus`](https://walker-data.com/tidycensus/index.html): Combines access to the Census API and TIGER/Line shapefiles to simultaneously pull Census data and geometries (at the cost of a more limited set of API endpoints). 
+
+
+# Thank You {.inverse}
+
+```{=html}
+<div style="position: absolute;top: 65%;margin-left: 1em;">
+  <p style="margin-top: 12px;">Tristan Hanon</p>
+  <p style="margin-top: 12px;">AMS Dairy Program</p>
+  <a href="mailto:tristan.hanon@usda.gov" rel="noopener" style="margin-top: 12px;">
+    <code>tristan.hanon@usda.gov</code>
+  </a>
+</div>
+```

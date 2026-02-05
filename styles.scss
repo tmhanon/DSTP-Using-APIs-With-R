@@ -1,0 +1,217 @@
+/*-- scss:defaults --*/
+
+// Fonts
+@import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap');
+
+$presentation-heading-font: 'Merriweather', serif;
+$font-family-monospace: 'IBM Plex Mono', mono;
+
+$colors: (
+  "lightbrown": #f7f1e0,
+  "mediumbrown": #e8d9af,
+  "darkbrown": #AE8F33,
+  "lightgreen": #a0eb73,
+  "green": #2b5c0d,
+  "darkgreen": #20440a,
+  "lightblue": #9bd4ff,
+  "blue": #0071BC,
+  "darkblue": #064671
+);
+
+@function theme-color($color) {
+  @return map-get($colors, $color);
+}
+
+$body-bg: theme-color("lightbrown");
+$body-color: theme-color("darkgreen");
+$presentation-heading-color: theme-color("green");
+$link-color: theme-color("blue");
+$code-color: theme-color("darkblue");
+
+// Title Slide Adjustments
+$presentation-title-slide-text-align: left;
+
+// Code Block Background
+$code-block-bg: #fff;
+
+
+/*-- scss:rules --*/
+
+.reveal p {
+  margin-top: 24px;
+}
+
+.reveal a {
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+#title-slide {
+  
+  .title {
+    font-size: 2.5em;
+    color: theme-color("green");
+    position: relative;
+    top: 550px;
+  }
+
+  .quarto-title-author {
+    color: theme-color("green");
+    position: relative;
+    top: 550px;
+  }
+  
+  .date {
+    color: theme-color("green");
+    position: relative;
+    top: 550px;
+  }
+}
+
+
+.inverse {
+  color: theme-color("mediumbrown");
+  
+  h1 {
+    position: absolute;
+    top: 50%;
+  }
+  
+  h1, h2, h3 {
+    color: theme-color("mediumbrown");
+  }
+  
+  a {
+    color: theme-color("lightblue");
+  }
+  
+  p {
+    color: theme-color("mediumbrown");
+  }
+  
+  code {
+    color: theme-color("lightblue");
+  }
+  
+  .slide-background-content {
+    background-color: theme-color("green");
+  }
+  
+}
+
+
+@mixin background-settings {
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+
+.theme-title {
+  &:is(.slide-background) {
+    background-image: url('../../../../../images/AMS-Title-Photo.jpg');
+    @include background-settings;
+  }
+}
+
+// Classes
+
+.center-text {
+  text-align: center !important;
+}
+
+.smaller-bullets {
+  font-size: 32px;
+  margin-top: -0.5em;
+  margin-left: 1em;
+}
+
+// Fragments
+
+.reveal .slides section .fragment.hl-brown {
+  opacity: unset;
+  visibility: unset;
+
+  &.visible {
+    background-color: theme-color("lightbrown");
+  }
+
+  &.current-fragment {
+    background-color: darken(theme-color("mediumbrown"), 20%);
+    font-weight: bold;
+  }
+}
+
+
+// Highlight Classes
+
+@each $name1, $col1 in $colors {
+  @each $name2, $col2 in $colors {
+    span.hl-#{$name1}-#{$name2}, .hl-#{$name1}-#{$name2} > h2 {
+      background-image: linear-gradient(90deg, $col1, $col2);
+      background-size: 100% 42%;
+      background-repeat: no-repeat;
+      background-position: 0 85%;
+      width: fit-content;
+    }
+  }
+}
+
+span.highlight-line {
+  background-color: theme-color("lightbrown");
+  box-shadow: 5px 5px 5px 5px theme-color("lightbrown");
+  font-weight: bold;
+}
+
+
+// Code Blocks
+.reveal div.sourceCode {
+  border-width: 0px 0px 0px 6px;
+  border-color: theme-color("darkblue");
+  border-radius: 0px;
+  margin-bottom: 10px !important;
+  box-shadow: 0 10px 47px rgb(0 0 0 / 55%);
+}
+
+.reveal pre code {
+  background-color: #fff;
+  padding: 6px 9px 6px 9px;
+  border-width: 0px 0px 0px 6px;
+  border-color: theme-color("darkblue");
+}
+
+.cell-output {
+  margin-top: 10px !important;
+  box-shadow: 0 10px 47px rgb(0 0 0 / 55%);
+}
+
+.cell-output-display {
+  border-width: 0px 0px 0px 6px;
+  border-color: theme-color("darkblue");
+  background-color: #fff !important;
+  margin-top: 10px !important;
+  box-shadow: 0 10px 47px rgb(0 0 0 / 55%);
+}
+
+.code-with-filename {
+  box-shadow: 0 10px 47px rgb(0 0 0 / 55%);
+  width: fit-content;
+  margin: auto !important;
+}
+
+.code-with-filename .code-with-filename-file {
+  border-width: 0px 0px 0px 6px;
+  border-color: theme-color("darkblue");
+  border-radius: 0px;
+}
+
+
+
+.pagedtable-footer {
+  font-size: 0.55em;
+}
+
+code span.co {
+  font-style: italic;
+}
