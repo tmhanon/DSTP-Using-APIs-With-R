@@ -1,0 +1,22 @@
+# Working with APIs in R
+
+
+This repository hosts the slides and source code from my Enhanced
+Learning Session for the USDA Data Science Training Program titled
+“Working with APIs in R”.
+
+The presentation mostly focuses on using the
+[`httr2`](https://httr2.r-lib.org/index.html) package to build and
+execute HTTP requests. I demonstrated accessing data from two USDA API
+services: [Datamart](https://mpr.datamart.ams.usda.gov/), a source for
+mandatory reporting data, and [My Market
+News](https://mymarketnews.ams.usda.gov/), a source for Market News data
+across USDA.
+
+I also discuss some basic API definitions, including demonstrating how
+authentication using an API key works, but I am by no means an expert on
+API architecture.
+
+The [Quarto](https://quarto.org/) source code that renders the slides is
+in the `index.qmd` file. The slides and associated files are located in
+the `docs` folder, with `index.html` being the slides themselves.
