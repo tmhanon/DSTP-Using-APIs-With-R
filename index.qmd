@@ -1022,7 +1022,7 @@ APIs can handle authentication in a number of different ways:
 ## Summarizing What We Learned {.inverse}
 
 ::: {.incremental}
-- [***Web APIs***]{.hl-lightblue-lightgreen} allow *authorized* users to access data through a structured *request-response* framework. 
+- [***Web APIs***]{.hl-darkblue-darkgreen} allow *authorized* users to access data through a structured *request-response* framework. 
 - [`httr2`]{style="font-weight: bold"} is a package that provides a framework for building and executing HTTP requests. 
 - Create a `httr2` request by passing a base URL to `httr2::request()`.
   - Build on that request using `httr2::req_url_path_append()` and `httr2::req_url_query()`.
@@ -1030,7 +1030,7 @@ APIs can handle authentication in a number of different ways:
 - Execute a `httr2` request by passing it to `httr2::req_perform()`.
 - Extract JSON data using `httr2::resp_body_json(simplifyVector = TRUE)` (or a similar function for different data types).
 - Use `purrr::pluck()` to drill down to lower levels of nested lists.
-- [***Build a function once you know how an API works!***]{.hl-lightblue-lightgreen}
+- [***Build a function once you know how an API works!***]{.hl-darkblue-darkgreen}
 :::
 
 

@@ -1447,7 +1447,7 @@ $detail
 [1] "Attempt to access the protected resource. Please use HELP LINK for more information: https://marsapi.ams.usda.gov/services/help"
 
 $dateTime
-[1] "2026-02-05T10:44:43.724206"</code></pre>
+[1] "2026-02-05T10:48:31.5544105"</code></pre>
 </div>
 </div>
 </div>
@@ -1574,7 +1574,7 @@ Body: In memory (1105122 bytes)</code></pre>
 <section id="summarizing-what-we-learned" class="slide level2 inverse">
 <h2>Summarizing What We Learned</h2>
 <ul>
-<li class="fragment"><span class="hl-lightblue-lightgreen"><strong><em>Web APIs</em></strong></span> allow <em>authorized</em> users to access data through a structured <em>request-response</em> framework.</li>
+<li class="fragment"><span class="hl-darkblue-darkgreen"><strong><em>Web APIs</em></strong></span> allow <em>authorized</em> users to access data through a structured <em>request-response</em> framework.</li>
 <li class="fragment"><span style="font-weight: bold"><code>httr2</code></span> is a package that provides a framework for building and executing HTTP requests.</li>
 <li class="fragment">Create a <code>httr2</code> request by passing a base URL to <code>httr2::request()</code>.
 <ul>
@@ -1584,7 +1584,7 @@ Body: In memory (1105122 bytes)</code></pre>
 <li class="fragment">Execute a <code>httr2</code> request by passing it to <code>httr2::req_perform()</code>.</li>
 <li class="fragment">Extract JSON data using <code>httr2::resp_body_json(simplifyVector = TRUE)</code> (or a similar function for different data types).</li>
 <li class="fragment">Use <code>purrr::pluck()</code> to drill down to lower levels of nested lists.</li>
-<li class="fragment"><span class="hl-lightblue-lightgreen"><strong><em>Build a function once you know how an API works!</em></strong></span></li>
+<li class="fragment"><span class="hl-darkblue-darkgreen"><strong><em>Build a function once you know how an API works!</em></strong></span></li>
 </ul>
 </section>
 <section id="for-more-information" class="slide level2 inverse">
