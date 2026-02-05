@@ -1,5 +1,7 @@
 project:
-  title: "DSTP-Using-APIs-With-R"
+  type: website
+  output-dir: docs
 
-
-
+website:
+  title: "Working with APIs in R"
+  site-url: "https://tmhanon.github.io/DSTP-Using-APIs-With-R"
