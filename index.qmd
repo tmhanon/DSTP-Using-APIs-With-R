@@ -1019,7 +1019,7 @@ APIs can handle authentication in a number of different ways:
 
 # Wrapping Up {.inverse}
 
-## Summarizing What We Learned
+## Summarizing What We Learned {.inverse}
 
 ::: {.incremental}
 - [***Web APIs***]{.hl-lightblue-lightgreen} allow *authorized* users to access data through a structured *request-response* framework. 
@@ -1062,11 +1062,22 @@ Already existing R packages wrapping useful APIs:
 # Thank You {.inverse}
 
 ```{=html}
-<div style="position: absolute;top: 65%;margin-left: 1em;">
+<div style="position: absolute;top: 60%;margin-left: 1em;">
   <p style="margin-top: 12px;">Tristan Hanon</p>
-  <p style="margin-top: 12px;">AMS Dairy Program</p>
   <a href="mailto:tristan.hanon@usda.gov" rel="noopener" style="margin-top: 12px;">
     <code>tristan.hanon@usda.gov</code>
   </a>
+  <p style="margin-top: 12px;">
+    Slides: 
+    <a href="https://tmhanon.github.io/DSTP-Using-APIs-With-R/" target="_blank" rel="noopener">
+      <code>tmhanon.github.io/DSTP-Using-APIs-With-R/</code>
+    </a>
+  </p>
+  <p style="margin-top: 12px;">
+    Source Code: 
+    <a href="https://github.com/tmhanon/DSTP-Using-APIs-With-R" target="_blank" rel="noopener">
+      <code>github.com/tmhanon/DSTP-Using-APIs-With-R</code>
+    </a>
+  </p>
 </div>
 ```

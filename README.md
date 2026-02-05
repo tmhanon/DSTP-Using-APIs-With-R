@@ -1,6 +1,8 @@
 # Working with APIs in R
 
 
+[Link to Slides](https://tmhanon.github.io/DSTP-Using-APIs-With-R/)
+
 This repository hosts the slides and source code from my Enhanced
 Learning Session for the USDA Data Science Training Program titled
 “Working with APIs in R”.
@@ -19,4 +21,6 @@ API architecture.
 
 The [Quarto](https://quarto.org/) source code that renders the slides is
 in the `index.qmd` file. The slides and associated files are located in
-the `docs` folder, with `index.html` being the slides themselves.
+the `docs` folder, with `index.html` being the slides themselves, but
+can be more easily viewed at
+[`tmhanon.github.io/DSTP-Using-APIs-With-R`](https://tmhanon.github.io/DSTP-Using-APIs-With-R/).
